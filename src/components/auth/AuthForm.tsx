@@ -1,5 +1,6 @@
 "use client";
 
+import { registerUser } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { signIn } from "next-auth/react";
@@ -19,12 +20,12 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
     const form = new FormData(e.currentTarget);
 
     if (mode === "register") {
-      const res = await fetch("/actions/register", {
-        method: "POST",
-        body: form,
-      });
-      if (!res.ok) toast.error("Registration failed");
-      else toast.success("Registered! Please login.");
+      try {
+        await registerUser(form);
+        toast.success("Registered! Please login.");
+      } catch {
+        toast.error("Registration failed");
+      }
     } else {
       const result = await signIn("credentials", {
         email: form.get("email"),
@@ -38,20 +39,19 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 max-w-sm mx-auto">
-      {mode === "register" && <Input name="username" placeholder="Username" />}
-      <Input name="email" placeholder="Email" type="email" />
-      <Input name="password" placeholder="Password" type="password" />
+    <>
+      <form onSubmit={handleSubmit} className="space-y-4 max-w-sm mx-auto">
+        <Input name="email" placeholder="Email" type="email" />
+        <Input name="password" placeholder="Password" type="password" />
 
-      <Button type="submit" className="w-full" disabled={loading}>
-        {mode === "register" ? "Sign up" : "Log in"}
-      </Button>
-
-      <div className="flex items-center justify-center gap-2">
+        <Button type="submit" className="w-full" disabled={loading}>
+          {mode === "register" ? "Sign up" : "Log in"}
+        </Button>
+      </form>{" "}
+      <div className="flex flex-col items-center justify-center">
         <span className="text-sm text-muted-foreground">or</span>
+        <GoogleButton />
       </div>
-
-      <GoogleButton />
-    </form>
+    </>
   );
 }
