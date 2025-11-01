@@ -11,30 +11,54 @@ datasource db {
 
 model User {
   id            String    @id @default(cuid())
-  username      String    @unique
+  name          String?
   email         String    @unique
-  passwordHash  String
+  emailVerified DateTime?
+  image         String?
+  passwordHash  String? // only needed for credentials
+  accounts      Account[]
+  sessions      Session[]
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  profile       Profile?
-  habits        Habit[]
-  followers     Follow[]  @relation("UserFollowers")
-  following     Follow[]  @relation("UserFollowing")
-  assets        Asset[]
-  themes        Theme[]
-  layouts       Layout[]
+  profile   Profile?
+  habits    Habit[]
+  followers Follow[] @relation("UserFollowers")
+  following Follow[] @relation("UserFollowing")
+  assets    Asset[]
+  themes    Theme[]
+  layouts   Layout[]
 }
 
-// ✅ both sides of the relation must match
-model Follow {
-  id           String   @id @default(cuid())
-  followerId   String
-  followingId  String
-  createdAt    DateTime @default(now())
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  access_token      String?
+  expires_at        Int?
+  user              User    @relation(fields: [userId], references: [id])
 
-  follower     User     @relation("UserFollowing", fields: [followerId], references: [id])
-  following    User     @relation("UserFollowers", fields: [followingId], references: [id])
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id])
+}
+
+model Follow {
+  id          String   @id @default(cuid())
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+
+  follower  User @relation("UserFollowing", fields: [followerId], references: [id])
+  following User @relation("UserFollowers", fields: [followingId], references: [id])
 
   @@unique([followerId, followingId])
 }
@@ -42,25 +66,25 @@ model Follow {
 // --------------- PROFILE & CUSTOMIZATION ---------------
 
 model Profile {
-  id            String   @id @default(cuid())
-  userId        String   @unique
-  bio           String?
-  avatarUrl     String?
-  bannerUrl     String?
-  themeId       String?
-  layoutId      String?
-  preferences   Json?
-  updatedAt     DateTime @updatedAt
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  bio         String?
+  avatarUrl   String?
+  bannerUrl   String?
+  themeId     String?
+  layoutId    String?
+  preferences Json?
+  updatedAt   DateTime @updatedAt
 
-  user          User     @relation(fields: [userId], references: [id])
-  theme         Theme?   @relation(fields: [themeId], references: [id])
-  layout        Layout?  @relation(fields: [layoutId], references: [id])
+  user   User    @relation(fields: [userId], references: [id])
+  theme  Theme?  @relation(fields: [themeId], references: [id])
+  layout Layout? @relation(fields: [layoutId], references: [id])
 }
 
 // --------------- HABIT MODELS ---------------
 
 model Habit {
-  id          String   @id @default(cuid())
+  id          String  @id @default(cuid())
   userId      String
   title       String
   description String?
@@ -68,18 +92,18 @@ model Habit {
   progress    Json?
   visualId    String?
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  user        User     @relation(fields: [userId], references: [id])
-  visual      PinStyle? @relation(fields: [visualId], references: [id])
+  user   User      @relation(fields: [userId], references: [id])
+  visual PinStyle? @relation(fields: [visualId], references: [id])
 }
 
 // --------------- VISUAL CUSTOMIZATION ---------------
 
 model Theme {
   id           String   @id @default(cuid())
-  userId       String
+  userId       String?
   name         String
   description  String?
   baseColor    String
@@ -96,25 +120,25 @@ model Theme {
   meta         Json?
   createdAt    DateTime @default(now())
 
-  user         User     @relation(fields: [userId], references: [id])
-  profiles     Profile[] // ✅ opposite of Profile.theme
+  user     User?     @relation(fields: [userId], references: [id])
+  profiles Profile[]
 }
 
 model Layout {
-  id          String   @id @default(cuid())
-  userId      String
-  name        String
-  gridType    String
-  spacing     String
-  columns     Int
-  pinShape    String
-  showGrid    Boolean  @default(true)
-  showMargin  Boolean  @default(true)
-  extras      Json?
-  createdAt   DateTime @default(now())
+  id         String   @id @default(cuid())
+  userId     String?
+  name       String
+  gridType   String
+  spacing    String
+  columns    Int
+  pinShape   String
+  showGrid   Boolean  @default(true)
+  showMargin Boolean  @default(true)
+  extras     Json?
+  createdAt  DateTime @default(now())
 
-  user        User     @relation(fields: [userId], references: [id])
-  profiles    Profile[] // ✅ opposite of Profile.layout
+  user     User?     @relation(fields: [userId], references: [id])
+  profiles Profile[]
 }
 
 model PinStyle {
@@ -129,20 +153,20 @@ model PinStyle {
   accentColor String?
   meta        Json?
 
-  habits      Habit[] // ✅ opposite of Habit.visual
+  habits Habit[]
 }
 
 // --------------- CREATIVE ASSETS ---------------
 
 model Asset {
-  id          String   @id @default(cuid())
-  userId      String
-  url         String
-  type        String
-  altText     String?
-  createdAt   DateTime @default(now())
+  id        String   @id @default(cuid())
+  userId    String
+  url       String
+  type      String
+  altText   String?
+  createdAt DateTime @default(now())
 
-  user        User     @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 }
 
 model ThemePreset {
