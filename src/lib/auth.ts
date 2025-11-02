@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { compare } from "bcrypt";
-import { AuthOptions } from "next-auth";
+import { AuthOptions, getServerSession } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 
@@ -54,3 +54,16 @@ export const authConfig: AuthOptions = {
   },
   debug: true,
 };
+
+export async function getCurrentUser() {
+  const session = await getServerSession(authConfig);
+  if (!session?.user.id) throw new Error("Not authenticated");
+
+  const user = await prisma.user.findFirst({
+    where: {
+      id: session?.user.id,
+    },
+  });
+  if (!user) throw new Error("Not exists");
+  return user;
+}
