@@ -1,8 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { compare } from "bcrypt";
-import { AuthOptions, Session, User } from "next-auth";
-import { JWT } from "next-auth/jwt";
+import { AuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 
@@ -42,9 +41,13 @@ export const authConfig: AuthOptions = {
   session: { strategy: "jwt" },
   pages: { signIn: "/login" },
   callbacks: {
-    async session({ token, session }: { token: JWT; session: Session }) {
+    async jwt({ token, user }) {
+      if (user) token.id = user.id;
+      return token;
+    },
+    async session({ token, session }) {
       if (token && session.user) {
-        (session.user as User & { id?: string }).id = token.sub!;
+        session.user.id = token.id as string;
       }
       return session;
     },
