@@ -2,6 +2,7 @@
 
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { format } from "date-fns";
 import { revalidatePath } from "next/cache";
 
 export async function getDashboardData() {
@@ -26,10 +27,16 @@ export async function toggleHabitProgress(habitId: string, date: string) {
   const habit = await prisma.habit.findUnique({
     where: { id: habitId },
   });
-  if (!habit) throw new Error("Habit not found");
 
+  // Ownership check for security
+  if (!habit || habit.userId !== user.id) {
+    throw new Error("Habit not found or unauthorized");
+  }
+
+  // Normalize date to yyyy-MM-dd for consistency
+  const normalizedDate = format(new Date(date), "yyyy-MM-dd");
   const progress = (habit.progress as Record<string, boolean>) || {};
-  progress[date] = !progress[date];
+  progress[normalizedDate] = !progress[normalizedDate];
 
   await prisma.habit.update({
     where: { id: habitId },
