@@ -1,11 +1,20 @@
 "use client";
 
 import { toggleHabitProgress } from "@/actions/dashboard";
+import { Habit } from "@prisma/client";
 import { addDays, format, startOfToday } from "date-fns";
 import { motion } from "framer-motion";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 
-export default function HabitTable({ habits }: { habits: any[] }) {
+type HabitWithProgress = Omit<Habit, "progress"> & {
+  progress: Record<string, boolean>;
+};
+
+export default function HabitTable({
+  habits,
+}: {
+  habits: HabitWithProgress[];
+}) {
   const [isPending, startTransition] = useTransition();
   const [localHabits, setLocalHabits] = useState(habits);
   const scrollRef = useRef<HTMLDivElement>(null);

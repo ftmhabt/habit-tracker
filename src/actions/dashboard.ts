@@ -9,10 +9,12 @@ export async function getDashboardData() {
   const user = await getCurrentUser();
   if (!user) throw new Error("Not authenticated");
 
-  const habits = await prisma.habit.findMany({
-    where: { userId: user.id },
-    orderBy: { createdAt: "asc" },
-  });
+  const habits = (
+    await prisma.habit.findMany({ where: { userId: user.id } })
+  ).map((h) => ({
+    ...h,
+    progress: (h.progress as Record<string, boolean>) || {},
+  }));
 
   return {
     name: user.name as string,
