@@ -101,8 +101,9 @@ export default function HabitTable({
     startTransition(async () => {
       try {
         await toggleHabitProgress(habitId, date);
-      } catch (e) {
-        console.error("Toggle failed", e);
+      } catch (err) {
+        console.error(err);
+        alert("You can only update today's progress.");
       }
     });
   };
@@ -169,26 +170,39 @@ export default function HabitTable({
               <div key={habit.id} className="flex">
                 {days.map((date) => {
                   const done = habit.progress?.[date];
+                  const isToday = date === todayISO;
+                  const isClickable = isToday; // only allow toggling today
+
                   return (
-                    <button
+                    <div
                       key={`${habit.id}-${date}`}
-                      type="button"
-                      onClick={() => handleToggle(habit.id, date)}
-                      aria-pressed={done}
-                      className={`w-16 h-10 border-r border-b border-muted flex items-center justify-center select-none transition ${
-                        done
-                          ? "bg-green-500/60 hover:bg-green-500/70"
-                          : "hover:bg-muted/60"
-                      }`}
+                      onClick={
+                        isClickable
+                          ? () => handleToggle(habit.id, date)
+                          : undefined
+                      }
+                      className={`
+        w-16 h-10 border-r border-b border-muted flex items-center justify-center select-none
+        ${
+          isClickable
+            ? "cursor-pointer active:scale-95 transition"
+            : "opacity-50 cursor-not-allowed"
+        }
+      `}
                     >
                       <motion.span
+                        title={
+                          !isClickable
+                            ? "You can only update today's habit"
+                            : ""
+                        }
                         initial={false}
                         animate={done ? { scale: [0, 1.3, 1] } : { scale: 1 }}
                         transition={{ duration: 0.2 }}
                       >
                         {done ? "🌟" : ""}
                       </motion.span>
-                    </button>
+                    </div>
                   );
                 })}
               </div>

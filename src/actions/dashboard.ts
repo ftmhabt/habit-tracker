@@ -2,7 +2,6 @@
 
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { format } from "date-fns";
 import { revalidatePath } from "next/cache";
 
 export async function getDashboardData() {
@@ -26,19 +25,28 @@ export async function toggleHabitProgress(habitId: string, date: string) {
   const user = await getCurrentUser();
   if (!user) throw new Error("Not authenticated");
 
+  // Always compute "today" on the server (UTC-safe)
+  const today = new Date();
+  const todayISO = today.toLocaleDateString("en-CA"); // yyyy-mm-dd
+
+  // Prevent toggling for any date other than today
+  if (date !== todayISO) {
+    throw new Error("You can only mark progress for today's date.");
+  }
+
+  // Fetch the habit
   const habit = await prisma.habit.findUnique({
     where: { id: habitId },
   });
 
-  // Ownership check for security
-  if (!habit || habit.userId !== user.id) {
-    throw new Error("Habit not found or unauthorized");
-  }
+  if (!habit) throw new Error("Habit not found");
+  if (habit.userId !== user.id) throw new Error("Unauthorized");
 
-  // Normalize date to yyyy-MM-dd for consistency
-  const normalizedDate = format(new Date(date), "yyyy-MM-dd");
+  // Safely parse progress JSON
   const progress = (habit.progress as Record<string, boolean>) || {};
-  progress[normalizedDate] = !progress[normalizedDate];
+
+  // Toggle today's progress
+  progress[todayISO] = !progress[todayISO];
 
   await prisma.habit.update({
     where: { id: habitId },
