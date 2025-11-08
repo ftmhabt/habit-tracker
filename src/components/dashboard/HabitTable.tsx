@@ -1,6 +1,25 @@
 "use client";
 
 import { toggleHabitProgress } from "@/actions/dashboard";
+import { addHabit } from "@/actions/habit";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Habit } from "@prisma/client";
 import { addDays, format, startOfToday } from "date-fns";
 import { motion } from "framer-motion";
@@ -17,6 +36,10 @@ export default function HabitTable({
 }) {
   const [isPending, startTransition] = useTransition();
   const [localHabits, setLocalHabits] = useState(habits);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [newHabitTitle, setNewHabitTitle] = useState("");
+  const [newHabitShape, setNewHabitShape] = useState("circle");
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const todayRef = useRef<HTMLDivElement | null>(null);
   const loadingRef = useRef(false);
@@ -25,7 +48,7 @@ export default function HabitTable({
   const today = startOfToday();
   const todayISO = format(today, "yyyy-MM-dd");
 
-  // ✅ Compute initial 14-day window directly in useState
+  // ✅ 14-day window
   const [days, setDays] = useState(() => {
     const start = addDays(today, -7);
     return Array.from({ length: 15 }, (_, i) =>
@@ -33,7 +56,7 @@ export default function HabitTable({
     );
   });
 
-  // Append more days on scroll
+  // Infinite scroll for days
   const handleScroll = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -49,19 +72,14 @@ export default function HabitTable({
     }
   }, [days]);
 
-  // Scroll to today's column
+  // Scroll to today
   const scrollToToday = useCallback(() => {
     const parent = scrollRef.current;
     const todayEl = todayRef.current;
     if (!parent || !todayEl) return;
 
-    // Get the offset of the "today" cell relative to the scrollable area
     const offsetLeft = todayEl.offsetLeft;
-
-    // Account for the fixed habit column (same width as your .min-w-[120px])
     const habitColumnWidth = 120;
-
-    // Calculate scroll position so "today" is centered in view
     const targetScroll =
       offsetLeft -
       parent.clientWidth / 2 +
@@ -74,7 +92,6 @@ export default function HabitTable({
     });
   }, []);
 
-  // Auto-scroll to today once days are ready
   useEffect(() => {
     if (!initialScrollDone.current && days.length > 0) {
       initialScrollDone.current = true;
@@ -82,7 +99,7 @@ export default function HabitTable({
     }
   }, [days, scrollToToday]);
 
-  // Toggle progress (optimistic update)
+  // Toggle progress (optimistic)
   const handleToggle = (habitId: string, date: string) => {
     setLocalHabits((prev) =>
       prev.map((h) =>
@@ -108,9 +125,33 @@ export default function HabitTable({
     });
   };
 
+  const handleAddHabit = async () => {
+    if (!newHabitTitle.trim()) return;
+
+    try {
+      const habit = await addHabit({
+        title: newHabitTitle,
+        shape: newHabitShape,
+      });
+
+      const normalizedHabit: HabitWithProgress = {
+        ...habit,
+        progress: (habit.progress as Record<string, boolean>) || {},
+      };
+
+      setLocalHabits((prev) => [...prev, normalizedHabit]);
+      setIsDialogOpen(false);
+      setNewHabitTitle("");
+      setNewHabitShape("circle");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to add habit");
+    }
+  };
+
   return (
     <div className="flex flex-col gap-2">
-      {/* Header bar */}
+      {/* Header */}
       <div className="flex items-center justify-between px-3">
         <h2 className="font-semibold text-lg">Habits</h2>
         <button
@@ -121,9 +162,9 @@ export default function HabitTable({
         </button>
       </div>
 
-      {/* Table container */}
+      {/* Table */}
       <div className="flex border border-muted rounded-xl bg-background/80 shadow-sm overflow-hidden">
-        {/* Fixed left column */}
+        {/* Habit column */}
         <div className="min-w-[120px] border-r border-muted bg-muted/30">
           <div className="sticky top-0 px-3 py-2 font-semibold border-b border-muted bg-muted/40 text-sm">
             Habit
@@ -136,16 +177,62 @@ export default function HabitTable({
               {habit.title}
             </div>
           ))}
+
+          {/* ➕ Add Habit cell */}
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <div className="px-3 py-2 border-b border-muted text-sm text-primary hover:bg-muted/40 cursor-pointer transition">
+                + Add Habit
+              </div>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add New Habit</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 mt-3">
+                <div className="space-y-2">
+                  <Label htmlFor="habitTitle">Title</Label>
+                  <Input
+                    id="habitTitle"
+                    value={newHabitTitle}
+                    onChange={(e) => setNewHabitTitle(e.target.value)}
+                    placeholder="e.g. Exercise, Read"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Shape</Label>
+                  <Select
+                    value={newHabitShape}
+                    onValueChange={setNewHabitShape}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose shape" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="circle">Circle</SelectItem>
+                      <SelectItem value="square">Square</SelectItem>
+                      <SelectItem value="star">Star</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <DialogFooter className="mt-4">
+                <Button onClick={handleAddHabit}>Add</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
 
-        {/* Scrollable section */}
+        {/* Scrollable progress cells */}
         <div
           ref={scrollRef}
           onScroll={handleScroll}
           className="overflow-x-auto flex-1 scroll-smooth"
         >
           <div className="min-w-max">
-            {/* Header row (days) */}
+            {/* Header days */}
             <div className="flex border-b border-muted bg-muted/40">
               {days.map((d) => {
                 const isToday = d === todayISO;
@@ -159,19 +246,19 @@ export default function HabitTable({
                         : ""
                     }`}
                   >
-                    {d.slice(5)} {/* show MM-DD */}
+                    {d.slice(5)}
                   </div>
                 );
               })}
             </div>
 
-            {/* Habit rows */}
+            {/* Habit progress rows */}
             {localHabits.map((habit) => (
               <div key={habit.id} className="flex">
                 {days.map((date) => {
                   const done = habit.progress?.[date];
                   const isToday = date === todayISO;
-                  const isClickable = isToday; // only allow toggling today
+                  const isClickable = isToday;
 
                   return (
                     <div
@@ -181,21 +268,13 @@ export default function HabitTable({
                           ? () => handleToggle(habit.id, date)
                           : undefined
                       }
-                      className={`
-        w-16 h-10 border-r border-b border-muted flex items-center justify-center select-none
-        ${
-          isClickable
-            ? "cursor-pointer active:scale-95 transition"
-            : "opacity-50 cursor-not-allowed"
-        }
-      `}
+                      className={`w-16 h-10 border-r border-b border-muted flex items-center justify-center select-none ${
+                        isClickable
+                          ? "cursor-pointer active:scale-95 transition"
+                          : "opacity-50 cursor-not-allowed"
+                      }`}
                     >
                       <motion.span
-                        title={
-                          !isClickable
-                            ? "You can only update today's habit"
-                            : ""
-                        }
                         initial={false}
                         animate={done ? { scale: [0, 1.3, 1] } : { scale: 1 }}
                         transition={{ duration: 0.2 }}
@@ -211,7 +290,6 @@ export default function HabitTable({
         </div>
       </div>
 
-      {/* Subtle feedback */}
       {isPending && (
         <div className="text-xs text-muted-foreground text-center py-1">
           Saving...
