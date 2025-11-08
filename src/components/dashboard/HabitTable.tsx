@@ -2,6 +2,7 @@
 
 import { toggleHabitProgress } from "@/actions/dashboard";
 import { addHabit } from "@/actions/habit";
+import * as AllPins from "@/assets/pins";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,20 +14,16 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Habit } from "@prisma/client";
+import { Habit, PinStyle } from "@prisma/client";
 import { addDays, format, startOfToday } from "date-fns";
-import { motion } from "framer-motion";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import HabitPin from "./HabitPin";
 
-type HabitWithProgress = Omit<Habit, "progress"> & {
+const pinMap: Record<string, React.ElementType> = { ...AllPins };
+
+export type HabitWithProgress = Omit<Habit, "progress"> & {
   progress: Record<string, boolean>;
+  visual?: PinStyle | null;
 };
 
 export default function HabitTable({
@@ -48,7 +45,7 @@ export default function HabitTable({
   const today = startOfToday();
   const todayISO = format(today, "yyyy-MM-dd");
 
-  // ✅ 14-day window
+  // 14-day window
   const [days, setDays] = useState(() => {
     const start = addDays(today, -7);
     return Array.from({ length: 15 }, (_, i) =>
@@ -56,7 +53,6 @@ export default function HabitTable({
     );
   });
 
-  // Infinite scroll for days
   const handleScroll = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -72,7 +68,6 @@ export default function HabitTable({
     }
   }, [days]);
 
-  // Scroll to today
   const scrollToToday = useCallback(() => {
     const parent = scrollRef.current;
     const todayEl = todayRef.current;
@@ -86,10 +81,7 @@ export default function HabitTable({
       todayEl.clientWidth / 2 -
       habitColumnWidth;
 
-    parent.scrollTo({
-      left: targetScroll,
-      behavior: "smooth",
-    });
+    parent.scrollTo({ left: targetScroll, behavior: "smooth" });
   }, []);
 
   useEffect(() => {
@@ -99,18 +91,11 @@ export default function HabitTable({
     }
   }, [days, scrollToToday]);
 
-  // Toggle progress (optimistic)
   const handleToggle = (habitId: string, date: string) => {
     setLocalHabits((prev) =>
       prev.map((h) =>
         h.id === habitId
-          ? {
-              ...h,
-              progress: {
-                ...h.progress,
-                [date]: !h.progress?.[date],
-              },
-            }
+          ? { ...h, progress: { ...h.progress, [date]: !h.progress?.[date] } }
           : h
       )
     );
@@ -133,12 +118,10 @@ export default function HabitTable({
         title: newHabitTitle,
         shape: newHabitShape,
       });
-
       const normalizedHabit: HabitWithProgress = {
         ...habit,
-        progress: (habit.progress as Record<string, boolean>) || {},
+        progress: habit.progress as Record<string, boolean>,
       };
-
       setLocalHabits((prev) => [...prev, normalizedHabit]);
       setIsDialogOpen(false);
       setNewHabitTitle("");
@@ -169,6 +152,7 @@ export default function HabitTable({
           <div className="sticky top-0 px-3 py-2 font-semibold border-b border-muted bg-muted/40 text-sm">
             Habit
           </div>
+
           {localHabits.map((habit) => (
             <div
               key={habit.id}
@@ -178,17 +162,19 @@ export default function HabitTable({
             </div>
           ))}
 
-          {/* ➕ Add Habit cell */}
+          {/* Add Habit Dialog */}
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <div className="px-3 py-2 border-b border-muted text-sm text-primary hover:bg-muted/40 cursor-pointer transition">
                 + Add Habit
               </div>
             </DialogTrigger>
+
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Add New Habit</DialogTitle>
               </DialogHeader>
+
               <div className="space-y-4 mt-3">
                 <div className="space-y-2">
                   <Label htmlFor="habitTitle">Title</Label>
@@ -202,19 +188,20 @@ export default function HabitTable({
 
                 <div className="space-y-2">
                   <Label>Shape</Label>
-                  <Select
-                    value={newHabitShape}
-                    onValueChange={setNewHabitShape}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Choose shape" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="circle">Circle</SelectItem>
-                      <SelectItem value="square">Square</SelectItem>
-                      <SelectItem value="star">Star</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="border rounded-md h-[300px] overflow-y-auto">
+                    {Object.keys(pinMap).map((shape) => (
+                      <div
+                        key={shape}
+                        className={`flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-muted/30 transition ${
+                          newHabitShape === shape ? "bg-primary/20" : ""
+                        }`}
+                        onClick={() => setNewHabitShape(shape)}
+                      >
+                        <HabitPin shape={shape} done={false} />
+                        <span className="capitalize">{shape}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
 
@@ -274,13 +261,10 @@ export default function HabitTable({
                           : "opacity-50 cursor-not-allowed"
                       }`}
                     >
-                      <motion.span
-                        initial={false}
-                        animate={done ? { scale: [0, 1.3, 1] } : { scale: 1 }}
-                        transition={{ duration: 0.2 }}
-                      >
-                        {done ? "🌟" : ""}
-                      </motion.span>
+                      <HabitPin
+                        shape={habit.visual?.shape || "circle"}
+                        done={!!done}
+                      />
                     </div>
                   );
                 })}

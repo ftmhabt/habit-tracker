@@ -9,7 +9,10 @@ export async function getDashboardData() {
   if (!user) throw new Error("Not authenticated");
 
   const habits = (
-    await prisma.habit.findMany({ where: { userId: user.id } })
+    await prisma.habit.findMany({
+      where: { userId: user.id },
+      include: { visual: true },
+    })
   ).map((h) => ({
     ...h,
     progress: (h.progress as Record<string, boolean>) || {},
