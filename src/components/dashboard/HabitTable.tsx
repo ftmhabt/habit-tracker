@@ -1,7 +1,7 @@
 "use client";
 
 import { toggleHabitProgress } from "@/actions/dashboard";
-import { addHabit } from "@/actions/habit";
+import { addHabit, updateHabitsOrder } from "@/actions/habit";
 import * as AllPins from "@/assets/pins";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,11 +14,25 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  closestCenter,
+  DndContext,
+  DragEndEvent,
+  MouseSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 import { Habit, PinStyle } from "@prisma/client";
 import { addDays, format, startOfToday } from "date-fns";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import HabitPin from "./HabitPin";
-
+import SortableHabitRow from "./SortableHabitRow";
 const pinMap: Record<string, React.ElementType> = { ...AllPins };
 
 export type HabitWithProgress = Omit<Habit, "progress"> & {
@@ -52,6 +66,48 @@ export default function HabitTable({
       format(addDays(start, i), "yyyy-MM-dd")
     );
   });
+
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(MouseSensor, {
+      activationConstraint: { distance: 5 }, // pixels before drag starts
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 150, tolerance: 5 },
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = localHabits.findIndex((h) => h.id === active.id);
+    const newIndex = localHabits.findIndex((h) => h.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const newOrderArray = arrayMove(localHabits, oldIndex, newIndex);
+    // optimistic update
+    setLocalHabits(newOrderArray);
+
+    // prepare payload: set sequential order values (0..n-1)
+    const payload = newOrderArray.map((h, idx) => ({ id: h.id, order: idx }));
+
+    startTransition(async () => {
+      try {
+        await updateHabitsOrder(payload);
+      } catch (err) {
+        console.error("Failed to save order:", err);
+        // revert on error (simple approach: revert to server-supplied habits or original)
+        setLocalHabits(habits); // fallback to original prop — can be improved by re-fetching
+        alert("Failed to save habit order.");
+      }
+    });
+  };
+
+  // ensure localHabits updates when props change (e.g., server fetch)
+  useEffect(() => {
+    setLocalHabits(habits);
+  }, [habits]);
 
   const handleScroll = useCallback(() => {
     const el = scrollRef.current;
@@ -153,14 +209,24 @@ export default function HabitTable({
             Habit
           </div>
 
-          {localHabits.map((habit) => (
-            <div
-              key={habit.id}
-              className="px-3 py-2 border-b border-muted text-sm truncate"
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={localHabits.map((h) => h.id)}
+              strategy={verticalListSortingStrategy}
             >
-              {habit.title}
-            </div>
-          ))}
+              {localHabits.map((habit) => (
+                <SortableHabitRow key={habit.id} id={habit.id}>
+                  <div className="px-3 py-2 border-b border-muted text-sm truncate cursor-grab">
+                    {habit.title}
+                  </div>
+                </SortableHabitRow>
+              ))}
+            </SortableContext>
+          </DndContext>
 
           {/* Add Habit Dialog */}
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

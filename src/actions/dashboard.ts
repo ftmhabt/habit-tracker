@@ -12,6 +12,7 @@ export async function getDashboardData() {
     await prisma.habit.findMany({
       where: { userId: user.id },
       include: { visual: true },
+      orderBy: { order: "asc" },
     })
   ).map((h) => ({
     ...h,
