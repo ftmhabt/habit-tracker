@@ -220,7 +220,7 @@ export default function HabitTable({
             >
               {localHabits.map((habit) => (
                 <SortableHabitRow key={habit.id} id={habit.id}>
-                  <div className="px-3 py-2 border-b border-muted text-sm truncate cursor-grab">
+                  <div className="px-3 py-2 h-9 border-b border-muted text-sm truncate cursor-grab">
                     {habit.title}
                   </div>
                 </SortableHabitRow>
@@ -321,7 +321,7 @@ export default function HabitTable({
                           ? () => handleToggle(habit.id, date)
                           : undefined
                       }
-                      className={`w-16 h-10 border-r border-b border-muted flex items-center justify-center select-none ${
+                      className={`w-16 h-9 border-r border-b border-muted flex items-center justify-center select-none ${
                         isClickable
                           ? "cursor-pointer active:scale-95 transition"
                           : "opacity-50 cursor-not-allowed"
