@@ -56,8 +56,8 @@ export default function HabitAddDialog({ onHabitAdded }: HabitAddDialogProps) {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <div className="px-3 py-2 border-b border-muted text-sm text-primary hover:bg-muted/40 cursor-pointer transition">
-          + Add Habit
+        <div className="px-3 py-2 my-1 font-bold text-red-500 border-r border-r-blue-500 text-center hover:bg-muted/40 cursor-pointer transition">
+          +
         </div>
       </DialogTrigger>
 

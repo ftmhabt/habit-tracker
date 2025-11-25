@@ -6,7 +6,7 @@ export default async function DashboardPage() {
   const { name, habits } = await getDashboardData();
 
   return (
-    <main className="min-h-screen bg-background p-8 space-y-8">
+    <main className="min-h-screen bg-background p-7 space-y-8">
       <AnimatedHeader name={name} />
 
       {habits.length > 0 ? (

@@ -4,6 +4,7 @@ import { useHabitDays } from "@/hooks/habits/useHabitDays";
 import { useHabitProgress } from "@/hooks/habits/useHabitProgress";
 import { useUiFeedback } from "@/hooks/useUiFeedback";
 import { HabitWithProgress } from "@/types/habits";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import HabitAddDialog from "./HabitAddDialog";
@@ -49,11 +50,24 @@ export default function HabitTable({
       </div>
 
       {/* Table */}
-      <div className="flex border border-muted rounded-xl bg-background/80 shadow-sm overflow-hidden">
+      <div className="flex overflow-hidden">
         {/* Habit column */}
-        <div className="min-w-[120px] border-r border-muted bg-muted/30">
-          <div className="sticky top-0 px-3 py-2 font-semibold border-b border-muted bg-muted/40 text-sm">
-            Habit
+        <div className="min-w-[120px]">
+          <div className="sticky top-0">
+            <div className="relative w-full flex justify-between items-end">
+              <div className="w-[70px] border-t border-t-red-500"></div>
+              <Image
+                src="/goal.svg"
+                alt="Goal"
+                width={63}
+                height={30}
+                className="-mb-1"
+              />
+              <h1 className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white text-[10px] uppercase font-bold">
+                goal
+              </h1>
+              <div className="w-[70px] border-t border-t-red-500"></div>
+            </div>
           </div>
 
           <HabitListDnd

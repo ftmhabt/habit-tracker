@@ -78,8 +78,10 @@ export default function HabitListDnd({
       >
         {habits.map((habit) => (
           <SortableHabitRow key={habit.id} id={habit.id}>
-            <div className="px-3 py-2 h-9 border-b border-muted text-sm truncate cursor-grab">
-              {habit.title}
+            <div className="border-b border-b-red-500">
+              <div className="px-3 py-2 h-9 border-r border-r-blue-500 font-bold text-red-500 text-center text-sm truncate cursor-grab my-[3px]">
+                {habit.title}
+              </div>
             </div>
           </SortableHabitRow>
         ))}
